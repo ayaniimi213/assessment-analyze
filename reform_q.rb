@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
-$KCODE = "EUC"
+# -*- coding: utf-8 -*-
+
+require './pn.rb'
+require "nkf"
 
 class Reform_Q
 
@@ -26,6 +29,7 @@ class Reform_Q
     @endtag = "Q4-3" if Regexp.compile(@starttag) =~ "Q4-2"
     
     @keywords = Hash.new
+    @nkf_opt = "-w"
   end
 
   def road_wc(lines)
@@ -38,18 +42,31 @@ class Reform_Q
   end
 
   def output_wc
+    pn = PN.new()
+
     buf = ""
     is_extract = false
     open(@fname){|file|
       while line = file.gets
+        line.chomp!
+        line = NKF.nkf(@nkf_opt, line)
         line.gsub!(/\<[^\>]*\>/, "")
-        line.gsub!(/\[¸½ºß¤Î¼ø¶È¤Î¤è¤¤ÅÀ\]/, "")
-        line.gsub!(/\[²şÁ±¤Ø¤Î¥¢¥¤¥Ç¥¢\]/, "")
-        line.gsub!(/\[¼¡Ç¯ÅÙ¤Î¼õ¹ÖÀ¸¤Ø\]/, "")
+        line.gsub!(/\[ç¾åœ¨ã®æˆæ¥­ã®ã‚ˆã„ç‚¹\]/, "")
+        line.gsub!(/\[æ”¹å–„ã¸ã®ã‚¢ã‚¤ãƒ‡ã‚¢\]/, "")
+        line.gsub!(/\[æ¬¡å¹´åº¦ã®å—è¬›ç”Ÿã¸\]/, "")
         line.gsub!(/^\d+/, "")
     
         is_extract = false if Regexp.compile("^" + @endtag) =~ line
-    
+
+        score = pn.analyze(line)
+        if score < -0.5 then
+          face = "<font color =\"blue\">(>_<)</font>"
+        elsif score < 0.5 then
+          face = "<font color =\"black\">(-_-)</font>"
+        else
+          face = "<font color =\"red\">(^-^)</font>"
+        end
+        buf.concat "#{face} " if is_extract and line != ""
         @keywords.each{|key, value|
 #          p "#{key}:#{value}" if value.to_i >= 10
           line.gsub!(Regexp.compile(key), "<FONT size=\"+4\">#{key}</FONT>") if value.to_i >= 40
@@ -57,7 +74,7 @@ class Reform_Q
           line.gsub!(Regexp.compile(key), "<FONT size=\"+3\">#{key}</FONT>") if (value.to_i < 30 && value.to_i >= 20)
           line.gsub!(Regexp.compile(key), "<FONT size=\"+2\">#{key}</FONT>") if (value.to_i < 20 && value.to_i >= 10)
         }
-        buf.concat "#{line}<br/>" if is_extract
+        buf.concat "#{line}<br/>\n" if is_extract
     
         is_extract = true if Regexp.compile("^" + @starttag) =~ line
       end

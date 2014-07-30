@@ -1,11 +1,13 @@
-#/usr/local/bin/bash
+# -*- coding: utf-8 -*-
+#/usr/bin/env ruby
 
-# ¼ø¶È¤Î¥ª¥ó¥é¥¤¥ó¥Õ¥£¡¼¥É¥Ğ¥Ã¥¯¤ÎÃ±¸ì¥Ù¡¼¥¹¤ÎÉÑÅÙ²òÀÏ
-# $Id: assessment-analyze.rb,v 1.1 2007/09/05 11:55:53 niimi Exp $
+# æˆæ¥­ã®ã‚ªãƒ³ãƒ©ã‚¤ãƒ³ãƒ•ã‚£ãƒ¼ãƒ‰ãƒãƒƒã‚¯ã®å˜èªãƒ™ãƒ¼ã‚¹ã®é »åº¦è§£æ
+# $Id:$
 
-require "tempfile"
-require "reform_q.rb"
-$KCODE = "EUC"
+require 'tempfile'
+require './reform_q.rb'
+require "nkf"
+require 'pp'
 
 class AssessmentAnalyze
 
@@ -28,15 +30,16 @@ class AssessmentAnalyze
   # SETTINGS
   def initialize()
     @wget = 'wget'
-    @essay_home = 'http://vishnu.fun.ac.jp/assessment/2010-2/result.php'
-    @dl_dir = './vishnu.fun.ac.jp/assessment/2010-2/'
-    @chasen = 'chasen'
-#    @chasen_option = %q(-j -F "%H:%M\n")
-    @chasen_option = %q(-j -r /usr/local/share/chasen/dic/ipadic/chasenrc -F "%H:%M\n")
-    @wc = '$HOME/ruby/word_count.rb'
+    @essay_home = 'http://vishnu.fun.ac.jp/assessment/2014-1/result.php'
+    @dl_dir = './vishnu.fun.ac.jp/assessment/2014-1/'
+    @mecab = 'mecab'
+    @mecab_option = '--node-format="%H:%m\n" --bos-format="" --eos-format="" --unk-format="" --eon-format=""'
+    @wc = './word_count.rb'
     @output_file = 'reform'
     @starttags = ["Q3-1","Q3-2","Q4-2"]
     @output_reform_index = "result.html"
+    @replace_pattern = '(\/assessment\/2014-1\/graph\.php\?course=)(\d+)'
+    @nkf_opt = "-w"
   end
   
   # get html
@@ -64,17 +67,17 @@ class AssessmentAnalyze
   end
   
   def output_header
-    sprintf "<i><font size=+2 color=blue><b>¼ø¶ÈÉ¾²Á¥·¡¼¥È ¸øÎ©¤Ï¤³¤À¤ÆÌ¤ÍèÂç³Ø</b></font></i><br>"
+    sprintf '<META http-equiv=Content-Type content="text/html; charset=UTF-8"><i><font size=+2 color=blue><b>æˆæ¥­è©•ä¾¡ã‚·ãƒ¼ãƒˆ å…¬ç«‹ã¯ã“ã ã¦æœªæ¥å¤§å­¦</b></font></i><br>'
   end
   
   def analyze_wc(id, starttag)
     buf = ""
     if starttag == "Q3-1"
-      buf = "<H1>Q3-1	¤³¤Î¹ÖµÁ¤ÎÃæ¤Ç¹Ô¤ï¤ì¤ë¤³¤È¤Ç¡¢ÍèÇ¯°Ê¹ß¤âÀ§ÈóÂ³¤±¤ë¤ÈÎÉ¤¤¤È¹Í¤¨¤é¤ì¤ë¤³¤È¤¬¤¢¤ì¤ĞÅú¤¨¤Æ¤¯¤À¤µ¤¤¡£:</H1>"
+      buf = "<H1>Q3-1	ã“ã®è¬›ç¾©ã®ä¸­ã§è¡Œã‚ã‚Œã‚‹ã“ã¨ã§ã€æ¥å¹´ä»¥é™ã‚‚æ˜¯éç¶šã‘ã‚‹ã¨è‰¯ã„ã¨è€ƒãˆã‚‰ã‚Œã‚‹ã“ã¨ãŒã‚ã‚Œã°ç­”ãˆã¦ãã ã•ã„ã€‚:</H1>"
     elsif starttag == "Q3-2"
-      buf = "<H1>Q3-2	¤³¤Î¹ÖµÁ¤Ç²şÁ±¤¹¤Ù¤­ÅÀ¤¬¤¢¤ë¤È¤¹¤ì¤Ğ¡¢¤É¤ó¤ÊÅÀ¤Ç¤¹¤«¡£²şÁ±°Æ¤òÄó°Æ¤·¤Æ¤¯¤À¤µ¤¤¡£:</H1>"
+      buf = "<H1>Q3-2	ã“ã®è¬›ç¾©ã§æ”¹å–„ã™ã¹ãç‚¹ãŒã‚ã‚‹ã¨ã™ã‚Œã°ã€ã©ã‚“ãªç‚¹ã§ã™ã‹ã€‚æ”¹å–„æ¡ˆã‚’ææ¡ˆã—ã¦ãã ã•ã„ã€‚:</H1>"
     elsif starttag == "Q4-2"
-      buf = "<H1>Q4-2	¼¡¤ÎÇ¯ÅÙ¤Î³ØÇ¯¤Ë¡¢¤³¤Î¹ÖµÁ¤ËÂĞ¤¹¤ë´¶ÁÛ¤ò¤Ş¤È¤á¤ÆÅÁ¤¨¤Æ²¼¤µ¤¤¡£¾­Íè¼õ¹Ö¤¹¤ë³ØÀ¸¤ËÂĞ¤··úÀßÅª¤Ê»öÊÁ¤òÅÁ¤¨¤ëµ¡²ñ¤òÄó¶¡¤·¤¿¤¤¤È¹Í¤¨¤Ş¤¹¡£(¥Í¥¬¥Æ¥£¥Ö¤ÊÅÀ¤ò²şÁ±¤¹¤ë¤¿¤á¤Î°Õ¸«¤Ë¤Ä¤¤¤Æ¤Ï¡¢Q3-2¤Ëµ­½Ò¤·¤Æ¤¯¤À¤µ¤¤¡£):</H1>"
+      buf = "<H1>Q4-2	æ¬¡ã®å¹´åº¦ã®å­¦å¹´ã«ã€ã“ã®è¬›ç¾©ã«å¯¾ã™ã‚‹æ„Ÿæƒ³ã‚’ã¾ã¨ã‚ã¦ä¼ãˆã¦ä¸‹ã•ã„ã€‚å°†æ¥å—è¬›ã™ã‚‹å­¦ç”Ÿã«å¯¾ã—å»ºè¨­çš„ãªäº‹æŸ„ã‚’ä¼ãˆã‚‹æ©Ÿä¼šã‚’æä¾›ã—ãŸã„ã¨è€ƒãˆã¾ã™ã€‚(ãƒã‚¬ãƒ†ã‚£ãƒ–ãªç‚¹ã‚’æ”¹å–„ã™ã‚‹ãŸã‚ã®æ„è¦‹ã«ã¤ã„ã¦ã¯ã€Q3-2ã«è¨˜è¿°ã—ã¦ãã ã•ã„ã€‚):</H1>"
     end
     buf.concat(analyze_wc_core(id, starttag))
   end
@@ -82,14 +85,9 @@ class AssessmentAnalyze
   def analyze_wc_core(id, starttag)
     temp = Tempfile.new("temp")
 
-#    system("ruby ./extract_q.rb #{@dl_dir} #{id} #{starttag} | \
-#    #{@chasen} #{@chasen_option} | \
-#    ruby -r 'jcode' -nle 'scan(/^.*:(.*)/){print $1 if ($1.length > 2)} ' | \
-#    #{@wc} | sort -nr -k 2 > #{@output_file}#{id}.#{starttag}")
-
     open("| ruby ./extract_q.rb #{@dl_dir} #{id} #{starttag} | \
-    #{@chasen} #{@chasen_option} | \
-    ruby -r 'jcode' -nle 'scan(/^.*:(.*)/){print $1 if ($1.length > 2)} ' | \
+    #{@mecab} #{@mecab_option} | \
+    ruby -nle 'print $_.split(/:/)[-1] if $_.split(/:/)[-1].length > 2' | \
     #{@wc} | sort -nr -k 2", "r"){|file|
       while line = file.gets
         temp.puts line
@@ -98,18 +96,19 @@ class AssessmentAnalyze
     temp.close
 
     temp.open
-#    `ruby ./reform_q.rb #{@dl_dir} #{id} #{starttag}`
     reformer = Reform_Q.new(@dl_dir, id, starttag)
-    reformer.road_wc(temp.read)
+    reformer.road_wc(temp.readlines)
     reformer.output_wc
 
   end
 
   def reform_index
     open(@output_reform_index, "w"){|out|
+      out.puts '<META http-equiv=Content-Type content="text/html; charset=UTF-8">'
       open(@dl_dir + "result.php"){|file|
         while line = file.gets
-          line.gsub!(/(\/assessment\/2010-2\/graph\.php\?course=)(\d+)/){@output_file + $2 + ".html"}
+          line = NKF.nkf(@nkf_opt, line)
+          line.gsub!(/#{@replace_pattern}/){@output_file + $2 + ".html"}
           out.puts line
         end
       }

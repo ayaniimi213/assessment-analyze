@@ -1,5 +1,8 @@
 #!/usr/bin/ruby
-$KCODE = "EUC"
+# -*- coding: utf-8 -*-
+require "nkf"
+opt = "-w"
+
 fdir = ARGV.shift
 fname='graph.php?course=13106'
 id = ARGV.shift
@@ -16,17 +19,18 @@ is_extract = false
 open(fname){|file|
   while line = file.gets
 #    line.chomp!
-    line.gsub!(/\<[^\>]*\>/, "");
-    line.gsub!(/\[¸½ºß¤Î¼ø¶È¤Î¤è¤¤ÅÀ\]/, "");
-    line.gsub!(/\[²şÁ±¤Ø¤Î¥¢¥¤¥Ç¥¢\]/, "");
-    line.gsub!(/\[¼¡Ç¯ÅÙ¤Î¼õ¹ÖÀ¸¤Ø\]/, "");
+    line = NKF.nkf(opt, line)
+    line.gsub!(/\<[^\>]*\>/, "")
+    line.gsub!(/\[ç¾åœ¨ã®æˆæ¥­ã®ã‚ˆã„ç‚¹\]/, "")
+    line.gsub!(/\[æ”¹å–„ã¸ã®ã‚¢ã‚¤ãƒ‡ã‚¢\]/, "")
+    line.gsub!(/\[æ¬¡å¹´åº¦ã®å—è¬›ç”Ÿã¸\]/, "")
     line.gsub!(/^\d+/, "");
 
-    is_extract = false if Regexp.compile("^" +endtag) =~ line;
+    is_extract = false if Regexp.compile("^" +endtag) =~ line
 
-    print line if is_extract;
+    print line if is_extract
 
-    is_extract = true if Regexp.compile("^" +starttag) =~ line;
+    is_extract = true if Regexp.compile("^" +starttag) =~ line
   end
 }
 
